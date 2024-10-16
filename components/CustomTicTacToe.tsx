@@ -9,8 +9,28 @@ import { Button } from '@/components/ui/button';
 type Player = 'X' | 'O';
 type BoardState = (Player | null)[][];
 
-// Initialize AudioContext
-const audioContext = new (window.AudioContext)();
+// // Initialize AudioContext
+// const audioContext = new (window.AudioContext)();
+// Initialize AudioContext if supported
+// const audioContext = window.AudioContext ? new (window.AudioContext)() : null;
+
+let audioContext: AudioContext | null = null;
+let clickSound: HTMLAudioElement | null = null;
+let winSound: HTMLAudioElement | null = null;
+let loseSound: HTMLAudioElement | null = null;
+let resetSound: HTMLAudioElement | null = null;
+
+if (typeof window !== 'undefined' && window.AudioContext) {
+    audioContext = new (window.AudioContext)();
+    clickSound = new Audio('/sounds/click.wav');
+    clickSound.volume = 0.2;
+    winSound = new Audio('/sounds/win.wav');
+    winSound.volume = 0.3;
+    loseSound = new Audio('/sounds/lose.wav');
+    loseSound.volume = 0.3;
+    resetSound = new Audio('/sounds/click.wav');
+    resetSound.volume = 0.2;
+}
 
 const CustomTicTacToe = () => {
     // State management
@@ -22,46 +42,50 @@ const CustomTicTacToe = () => {
     const [oMoves, setOMoves] = useState<[number, number][]>([]);
     
     // Audio elements for sound effects
-    const clickSound = new Audio('/sounds/click.wav');
-    clickSound.volume = 0.3;
-    const winSound = new Audio('/sounds/win.wav');
-    winSound.volume = 0.3;
-    const loseSound = new Audio('/sounds/lose.wav');
-    loseSound.volume = 0.3;
-    const resetSound = new Audio('/sounds/click.wav');
-    resetSound.volume = 0.3;
+    // const clickSound = new Audio('/sounds/click.wav');
+    // clickSound.volume = 0.2;
+    // const winSound = new Audio('/sounds/win.wav');
+    // winSound.volume = 0.3;
+    // const loseSound = new Audio('/sounds/lose.wav');
+    // loseSound.volume = 0.3;
+    // const resetSound = new Audio('/sounds/click.wav');
+    // resetSound.volume = 0.2;
 
     // Ensure the AudioContext is resumed after user interaction
+    // const resumeAudioContext = () => {
+    //     if (audioContext.state === 'suspended') {
+    //         audioContext.resume();
+    //     }
+    // };
     const resumeAudioContext = () => {
-        if (audioContext.state === 'suspended') {
+        if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
     };
-
     // Play sound functions
     const playClickSound = () => {
         resumeAudioContext();
-        clickSound.play().catch((error) => {
+        clickSound?.play().catch((error) => {
             console.error("Click sound playback failed:", error);
         });
     };
 
     const playWinSound = () => {
         resumeAudioContext();
-        winSound.play().catch((error) => {
+        winSound?.play().catch((error) => {
             console.error("Win sound playback failed:", error);
         });
     };
 
     const playLoseSound = () => {
         resumeAudioContext();
-        loseSound.play().catch((error) => {
+        loseSound?.play().catch((error) => {
             console.error("Lose sound playback failed:", error);
         });
     };
     const playResetSound = () => {
         resumeAudioContext();
-        resetSound.play().catch((error) => {
+        resetSound?.play().catch((error) => {
             console.error("Reset sound playback failed:", error);
         });
     };

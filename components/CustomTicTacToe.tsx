@@ -142,63 +142,65 @@ const CustomTicTacToe = () => {
     }, [winner, isDraw]);
 
     return (
-        <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen`}>
-            <h1 className="text-4xl font-bold mb-8">Custom Tic-Tac-Toe</h1>
-            <div className="flex justify-end w-full max-w-md mb-4">
-                <label className="flex items-center cursor-pointer">
-                    <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={isDarkMode}
-                        onChange={() => setIsDarkMode(!isDarkMode)}
-                    />
-                    <div className={`relative w-20 h-10 rounded-full bg-gray-300 ${isDarkMode ? 'bg-blue-500' : 'bg-gray-300'} transition duration-200 ease-linear`}>
-                        <div className={`absolute top-1 left-2 flex items-center justify-center transition-transform duration-200 ease-linear ${isDarkMode ? 'transform translate-x-8' : ''} rounded-full bg-white w-8 h-8`}>
-                            {isDarkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-blue-500" />}
+        <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
+            <div className="w-full max-w-md">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl sm:text-4xl font-bold">Custom Tic-Tac-Toe</h1>
+                    <label className="flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={isDarkMode}
+                            onChange={() => setIsDarkMode(!isDarkMode)}
+                        />
+                        <div className={`relative w-12 h-6 sm:w-16 sm:h-8 rounded-full ${isDarkMode ? 'bg-blue-500' : 'bg-gray-300'} transition duration-200 ease-linear`}>
+                            <div className={`absolute top-0.5 left-0.5 flex items-center justify-center transition-transform duration-200 ease-linear ${isDarkMode ? 'transform translate-x-6 sm:translate-x-8' : ''} rounded-full bg-white w-5 h-5 sm:w-7 sm:h-7`}>
+                                {isDarkMode ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-blue-500" />}
+                            </div>
                         </div>
+                    </label>
+                </div>
+                <div className={`${isDarkMode ? 'bg-white' : 'bg-gray-700'} p-4 sm:p-8 rounded-lg shadow-lg`}>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
+                        {board.map((row, rowIndex) =>
+                            row.map((cell, colIndex) => (
+                                <button
+                                    key={`${rowIndex}-${colIndex}`}
+                                    className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
+                                    onClick={() => makeMove(rowIndex, colIndex)}
+                                    disabled={Boolean(cell) || Boolean(winner) || isDraw}
+                                >
+                                    {cell === 'X' && <X size={50} className="text-blue-500" />}
+                                    {cell === 'O' && <Circle size={50} className="text-red-500" />}
+                                </button>
+                            ))
+                        )}
                     </div>
-                </label>
-            </div>
-            <div className={`${isDarkMode ? 'bg-gray-200' : 'bg-gray-600'}  dark:bg-gray-700 p-8 rounded-lg shadow-lg`}>
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                    {board.map((row, rowIndex) =>
-                        row.map((cell, colIndex) => (
-                            <button
-                                key={`${rowIndex}-${colIndex}`}
-                                className={`w-20 h-20 ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-4xl focus:outline-none transition-colors`}
-                                onClick={() => makeMove(rowIndex, colIndex)}
-                                disabled={Boolean(cell) || Boolean(winner) || isDraw}
-                            >
-                                {cell === 'X' && <X size={40} className="text-blue-500" />}
-                                {cell === 'O' && <Circle size={40} className="text-red-500" />}
-                            </button>
-                        ))
+                    {(winner || isDraw) && (
+                        <Alert className="mb-4">
+                            <AlertTitle>{winner ? 'Game Over' : 'Draw'}</AlertTitle>
+                            <AlertDescription>
+                                {winner ? `Player ${winner} wins!` : "It's a draw!"}
+                            </AlertDescription>
+                        </Alert>
                     )}
+                    <div className="flex flex-col sm:flex-row justify-between items-center">
+                        <p className={`text-lg font-semibold mb-2 sm:mb-0 ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
+                            Current Player: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
+                        </p>
+                        <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto">
+                            Reset Game
+                        </Button>
+                    </div>
                 </div>
-                {(winner || isDraw) && (
-                    <Alert className="mb-4">
-                        <AlertTitle>{winner ? 'Game Over' : 'Draw'}</AlertTitle>
-                        <AlertDescription>
-                            {winner ? `Player ${winner} wins!` : "It's a draw!"}
-                        </AlertDescription>
-                    </Alert>
-                )}
-                <div className="flex justify-between items-center">
-                <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-300'}`}>
-                        Current Player: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
-                    </p>
-                    <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white">
-                        Reset Game
-                    </Button>
-                </div>
+                <p className="mt-4 text-center text-sm">
+                    {`Only the last three moves of each player are visible. Focus on strategy!`}
+                </p>
+                <footer className="mt-8 text-center text-xs">
+                    <p>Contact: <a href="mailto:cs1230543@iitd.ac.in" className="underline">cs1230543@iitd.ac.in</a></p>
+                    <p>Version 1.0</p>
+                </footer>
             </div>
-            <p className="mt-4 text-center text-sm">
-                {`Only the last three moves of each player are visible. Focus on strategy!`}
-            </p>
-            <footer className="mt-8 text-center text-xs">
-                <p>Contact: <a href="mailto:cs1230543@iitd.ac.in" className="underline">cs1230543@iitd.ac.in</a></p>
-                <p>Version 1.0</p>
-            </footer>
         </div>
     );
 };

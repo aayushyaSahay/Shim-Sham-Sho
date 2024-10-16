@@ -159,13 +159,13 @@ const CustomTicTacToe = () => {
                     </div>
                 </label>
             </div>
-            <div className={`${isDarkMode ? 'bg-gray-200' : 'bg-gray-600'} bg-white dark:bg-gray-700 p-8 rounded-lg shadow-lg`}>
+            <div className={`${isDarkMode ? 'bg-gray-200' : 'bg-gray-600'}  dark:bg-gray-700 p-8 rounded-lg shadow-lg`}>
                 <div className="grid grid-cols-3 gap-4 mb-8">
                     {board.map((row, rowIndex) =>
                         row.map((cell, colIndex) => (
                             <button
                                 key={`${rowIndex}-${colIndex}`}
-                                className={`w-20 h-20 ${isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-200'} rounded-lg flex items-center justify-center text-4xl focus:outline-none hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors`}
+                                className={`w-20 h-20 ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-4xl focus:outline-none transition-colors`}
                                 onClick={() => makeMove(rowIndex, colIndex)}
                                 disabled={Boolean(cell) || Boolean(winner) || isDraw}
                             >

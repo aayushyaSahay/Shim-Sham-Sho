@@ -1,18 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Circle } from 'lucide-react';
+import { X, Circle, Sun, Moon } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
 // Type definitions for the player and board state
 type Player = 'X' | 'O';
 type BoardState = (Player | null)[][];
-
-// // Initialize AudioContext
-// const audioContext = new (window.AudioContext)();
-// Initialize AudioContext if supported
-// const audioContext = window.AudioContext ? new (window.AudioContext)() : null;
 
 let audioContext: AudioContext | null = null;
 let clickSound: HTMLAudioElement | null = null;
@@ -40,28 +35,14 @@ const CustomTicTacToe = () => {
     const [isDraw, setIsDraw] = useState(false);
     const [xMoves, setXMoves] = useState<[number, number][]>([]);
     const [oMoves, setOMoves] = useState<[number, number][]>([]);
-    
-    // Audio elements for sound effects
-    // const clickSound = new Audio('/sounds/click.wav');
-    // clickSound.volume = 0.2;
-    // const winSound = new Audio('/sounds/win.wav');
-    // winSound.volume = 0.3;
-    // const loseSound = new Audio('/sounds/lose.wav');
-    // loseSound.volume = 0.3;
-    // const resetSound = new Audio('/sounds/click.wav');
-    // resetSound.volume = 0.2;
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
-    // Ensure the AudioContext is resumed after user interaction
-    // const resumeAudioContext = () => {
-    //     if (audioContext.state === 'suspended') {
-    //         audioContext.resume();
-    //     }
-    // };
     const resumeAudioContext = () => {
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
     };
+
     // Play sound functions
     const playClickSound = () => {
         resumeAudioContext();
@@ -91,7 +72,6 @@ const CustomTicTacToe = () => {
     };
 
     const checkWinner = (player: Player): boolean => {
-        // Check rows, columns, and diagonals
         for (let i = 0; i < 3; i++) {
             if (
                 board[i][0] === player && board[i][1] === player && board[i][2] === player ||
@@ -112,9 +92,7 @@ const CustomTicTacToe = () => {
     const makeMove = (row: number, col: number) => {
         if (board[row][col] !== null || winner || isDraw) return;
 
-        // Play the click sound
         playClickSound();
-
         const newBoard = [...board];
         newBoard[row][col] = currentPlayer;
 
@@ -164,18 +142,32 @@ const CustomTicTacToe = () => {
     }, [winner, isDraw]);
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen`}>
             <h1 className="text-4xl font-bold mb-8">Custom Tic-Tac-Toe</h1>
-            <div className="bg-white p-8 rounded-lg shadow-lg">
+            <div className="flex justify-end w-full max-w-md mb-4">
+                <label className="flex items-center cursor-pointer">
+                    <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={isDarkMode}
+                        onChange={() => setIsDarkMode(!isDarkMode)}
+                    />
+                    <div className={`relative w-20 h-10 rounded-full bg-gray-300 ${isDarkMode ? 'bg-blue-500' : 'bg-gray-300'} transition duration-200 ease-linear`}>
+                        <div className={`absolute top-1 left-2 flex items-center justify-center transition-transform duration-200 ease-linear ${isDarkMode ? 'transform translate-x-8' : ''} rounded-full bg-white w-8 h-8`}>
+                            {isDarkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-blue-500" />}
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div className={`${isDarkMode ? 'bg-gray-200' : 'bg-gray-600'} bg-white dark:bg-gray-700 p-8 rounded-lg shadow-lg`}>
                 <div className="grid grid-cols-3 gap-4 mb-8">
                     {board.map((row, rowIndex) =>
                         row.map((cell, colIndex) => (
                             <button
                                 key={`${rowIndex}-${colIndex}`}
-                                className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-4xl focus:outline-none hover:bg-gray-300 transition-colors"
+                                className={`w-20 h-20 ${isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-200'} rounded-lg flex items-center justify-center text-4xl focus:outline-none hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors`}
                                 onClick={() => makeMove(rowIndex, colIndex)}
                                 disabled={Boolean(cell) || Boolean(winner) || isDraw}
-                            // disabled={cell !== null || winner || isDraw}
                             >
                                 {cell === 'X' && <X size={40} className="text-blue-500" />}
                                 {cell === 'O' && <Circle size={40} className="text-red-500" />}
@@ -192,12 +184,21 @@ const CustomTicTacToe = () => {
                     </Alert>
                 )}
                 <div className="flex justify-between items-center">
-                    <p className="text-lg font-semibold">
+                <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-300'}`}>
                         Current Player: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
                     </p>
-                    <Button onClick={resetGame}>Reset Game</Button>
+                    <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white">
+                        Reset Game
+                    </Button>
                 </div>
             </div>
+            <p className="mt-4 text-center text-sm">
+                {`Only the last three moves of each player are visible. Focus on strategy!`}
+            </p>
+            <footer className="mt-8 text-center text-xs">
+                <p>Contact: <a href="mailto:cs1230543@iitd.ac.in" className="underline">cs1230543@iitd.ac.in</a></p>
+                <p>Version 1.0</p>
+            </footer>
         </div>
     );
 };

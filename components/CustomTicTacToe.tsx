@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Circle, Sun, Moon, Home } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -83,7 +82,7 @@ const OnlineTicTacToe = () => {
         for (let i = 0; i < 3; i++) {
             if (
                 board[i][0] === player && board[i][1] === player && board[i][2] === player ||
-                board[ 0][i] === player && board[1][i] === player && board[2][i] === player
+                board[0][i] === player && board[1][i] === player && board[2][i] === player
             ) {
                 return true;
             }
@@ -99,11 +98,13 @@ const OnlineTicTacToe = () => {
 
     const makeMove = (row: number, col: number) => {
         if (board[row][col] !== null || winner || isDraw || currentPlayer !== player) return;
+        playClickSound();
         ws?.send(JSON.stringify({ type: 'MAKE_MOVE', lobbyId, row, col, player }));
     };
 
     const resetGame = () => {
         if (!isHost) return;
+        playResetSound();
         ws?.send(JSON.stringify({ type: 'RESET_GAME', lobbyId }));
     };
 
@@ -120,7 +121,7 @@ const OnlineTicTacToe = () => {
     };
 
     const connectWebSocket = useCallback(() => {
-        const serverIP = 'localhost'; // Change this to your server's IP if needed
+        const serverIP = '192.168.103.22'; // Change this to your server's IP if needed
         const socket = new WebSocket(`ws://${serverIP}:8080`);
         setWs(socket);
 
@@ -145,12 +146,22 @@ const OnlineTicTacToe = () => {
                 case 'GAME_OVER':
                     setWinner(data.winner);
                     setIsDraw(data.isDraw);
+                    if (data.winner === player) {
+                        playWinSound();
+                        setMessage("Congratulations! You won!");
+                    } else if (data.winner) {
+                        playLoseSound();
+                        setMessage("You lost. Better luck next time!");
+                    } else if (data.isDraw) {
+                        setMessage("It's a draw!");
+                    }
                     break;
                 case 'RESET_GAME':
                     setBoard(Array(3).fill(null).map(() => Array(3).fill(null)));
                     setCurrentPlayer('X');
                     setWinner(null);
                     setIsDraw(false);
+                    setMessage("Game has been reset. Good luck!");
                     break;
                 case 'SET_DIFFICULTY':
                     setDifficultyLevel(data.difficulty);
@@ -242,8 +253,7 @@ const OnlineTicTacToe = () => {
                                         key={`${rowIndex}-${colIndex}`}
                                         className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
                                         onClick={() => makeMove(rowIndex, colIndex)}
-                                        disabled={cell !== null || currentPlayer !== player}
-                                    >
+                                        disabled={cell !== null || currentPlayer !== player || winner !== null || isDraw}                                    >   
                                         {cell === 'X' && <X size={50} className="text-blue-500" />}
                                         {cell === 'O' && <Circle size={50} className="text-red-500" />}
                                     </button>
@@ -253,6 +263,14 @@ const OnlineTicTacToe = () => {
                         <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
                             You are: {player === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
                         </p>
+                        <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
+                            Current turn: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
+                        </p>
+                        {(winner || isDraw) && (
+                            <p className={`text-xl font-bold mt-4 ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
+                                {winner ? `Winner: ${winner === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}` : "It's a draw!"}
+                            </p>
+                        )}
                     </div>
                 )}
 

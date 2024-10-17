@@ -142,6 +142,8 @@ const OnlineTicTacToe = () => {
                 case 'UPDATE_BOARD':
                     setBoard(data.board);
                     setCurrentPlayer(data.currentPlayer);
+                    setXMoves(data.xMoves);
+                    setOMoves(data.oMoves);
                     break;
                 case 'GAME_OVER':
                     setWinner(data.winner);
@@ -161,6 +163,8 @@ const OnlineTicTacToe = () => {
                     setCurrentPlayer('X');
                     setWinner(null);
                     setIsDraw(false);
+                    setXMoves([]);
+                    setOMoves([]);
                     setMessage("Game has been reset. Good luck!");
                     break;
                 case 'SET_DIFFICULTY':
@@ -213,6 +217,34 @@ const OnlineTicTacToe = () => {
         connectWebSocket();
     };
 
+    // const getVisibleBoard = (): BoardState => {
+    //     if (difficultyLevel === 1 || difficultyLevel === 2) {
+    //         return board;
+    //     } else {
+    //         const visibleBoard: BoardState = Array(3).fill(null).map(() => Array(3).fill(null));
+
+    //         if (winner || isDraw) {
+    //             // Show last 3 moves when the game ends
+    //             const lastThreeMoves = [...xMoves, ...oMoves].slice(-3);
+    //             lastThreeMoves.forEach(([row, col], index) => {
+    //                 visibleBoard[row][col] = index % 2 === 0 ? 'X' : 'O';
+    //             });
+    //         } else {
+    //             // Show only the last move of each player during the game
+    //             if (xMoves.length > 0) {
+    //                 const [xRow, xCol] = xMoves[xMoves.length - 1];
+    //                 visibleBoard[xRow][xCol] = 'X';
+    //             }
+    //             if (oMoves.length > 0) {
+    //                 const [oRow, oCol] = oMoves[oMoves.length - 1];
+    //                 visibleBoard[oRow][oCol] = 'O';
+    //             }
+    //         }
+
+    //         return visibleBoard;
+    //     }
+    // };
+
     return (
         <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
             <div className="w-full max-w-md">
@@ -222,7 +254,7 @@ const OnlineTicTacToe = () => {
                         <Home size={24} />
                     </Button>
                 </div>
-                
+
                 {message && (
                     <Alert className="mb-4">
                         <AlertDescription>{message}</AlertDescription>
@@ -233,9 +265,9 @@ const OnlineTicTacToe = () => {
                     <div className="mb-4">
                         <Button onClick={createLobby} className="w-full mb-2">Create Lobby</Button>
                         <div className="flex">
-                            <Input 
-                                value={lobbyId} 
-                                onChange={(e) => setLobbyId(e.target.value)} 
+                            <Input
+                                value={lobbyId}
+                                onChange={(e) => setLobbyId(e.target.value)}
                                 placeholder="Enter Lobby Code"
                                 className="flex-grow mr-2"
                             />
@@ -253,7 +285,8 @@ const OnlineTicTacToe = () => {
                                         key={`${rowIndex}-${colIndex}`}
                                         className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
                                         onClick={() => makeMove(rowIndex, colIndex)}
-                                        disabled={cell !== null || currentPlayer !== player || winner !== null || isDraw}                                    >   
+                                        disabled={cell !== null || currentPlayer !== player || winner !== null || isDraw}
+                                    >
                                         {cell === 'X' && <X size={50} className="text-blue-500" />}
                                         {cell === 'O' && <Circle size={50} className="text-red-500" />}
                                     </button>
@@ -266,9 +299,14 @@ const OnlineTicTacToe = () => {
                         <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
                             Current turn: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
                         </p>
+                        {difficultyLevel === 3 && (winner || isDraw) && (
+                            <p className={`text-sm mt-2 ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
+                                Showing last 3 moves of both players.
+                            </p>
+                        )}
                         {(winner || isDraw) && (
                             <p className={`text-xl font-bold mt-4 ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
-                                {winner ? `Winner: ${winner === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}` : "It's a draw!"}
+                                {winner ? `Player ${winner} wins!` : 'It\'s a draw!'}
                             </p>
                         )}
                     </div>
@@ -283,7 +321,7 @@ const OnlineTicTacToe = () => {
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold">Difficulty Level</h2>
                             <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
-                                <SelectTrigger className={`w-40 ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
+                                <SelectTrigger className={`w-40 ${isDarkMode ? 'bg-gray-600' : 'bg-white'}`}>
                                     <SelectValue placeholder="Select difficulty" />
                                 </SelectTrigger>
                                 <SelectContent>

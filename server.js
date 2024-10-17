@@ -26,7 +26,9 @@ wss.on('connection', (ws) => {
                     visitor: null,
                     board: Array(3).fill(null).map(() => Array(3).fill(null)),
                     currentPlayer: 'X',
-                    difficulty: 2
+                    difficulty: 2,
+                    xMoves: [],
+                    oMoves: []
                 });
                 ws.send(JSON.stringify({ type: 'LOBBY_CREATED', lobbyId }));
                 break;
@@ -50,8 +52,9 @@ wss.on('connection', (ws) => {
             case 'MAKE_MOVE':
                 const gameLobby = lobbies.get(data.lobbyId);
                 if (gameLobby) {
-                    gameLobby.board[data.row][data.col] = data.player;
-                    gameLobby.currentPlayer = gameLobby.currentPlayer === 'X' ? 'O' : 'X';
+                    // gameLobby.board[data.row][data.col] = data.player;
+                    // gameLobby.currentPlayer = gameLobby.currentPlayer === 'X' ? 'O' : 'X';
+                    makeMove(gameLobby, data.row, data.col, data.player);
                     broadcastGameState(gameLobby);
                     checkGameOver(gameLobby);
                 }
@@ -62,6 +65,8 @@ wss.on('connection', (ws) => {
                 if (resetLobby && ws === resetLobby.host) {
                     resetLobby.board = Array(3).fill(null).map(() => Array(3).fill(null));
                     resetLobby.currentPlayer = 'X';
+                    resetLobby.xMoves = [];
+                    resetLobby.oMoves = [];
                     broadcastGameState(resetLobby);
                     broadcastToLobby(resetLobby, { type: 'RESET_GAME' });
                 }
@@ -104,11 +109,100 @@ wss.on('connection', (ws) => {
     });
 });
 
+function makeMove(lobby, row, col, player) {
+    lobby.board[row][col] = player;
+    if (player === 'X') {
+        lobby.xMoves.push([row, col]);
+    } else {
+        lobby.oMoves.push([row, col]);
+    }
+    // if (lobby.difficulty === 3) {
+    //     const moves = player === 'X' ? lobby.xMoves : lobby.oMoves;
+    //     if (moves.length > 3) {
+    //         const [oldRow, oldCol] = moves.shift();
+    //         lobby.board[oldRow][oldCol] = null;
+    //     }
+    // }
+    lobby.currentPlayer = lobby.currentPlayer === 'X' ? 'O' : 'X';
+}
+
+
+function getVisibleBoard(lobby) {
+    if (lobby.difficulty === 1) {
+        return lobby.board.map(row => [...row]);
+    } else if(lobby.difficulty === 2){
+        const visibleBoard = Array(3).fill(null).map(() => Array(3).fill(null));
+        
+        // Show last three moves of each player
+        const lastThreeXMoves = lobby.xMoves.slice(-3);
+        const lastThreeOMoves = lobby.oMoves.slice(-3);
+
+        lastThreeXMoves.forEach(([row, col]) => {
+            visibleBoard[row][col] = 'X';
+        });
+
+        lastThreeOMoves.forEach(([row, col]) => {
+            visibleBoard[row][col] = 'O';
+        });
+
+        // Ensure that only the visible moves are shown, and the rest are null
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                if (visibleBoard[i][j] === undefined) {
+                    visibleBoard[i][j] = null;
+                }
+            }
+        }
+        
+        return visibleBoard;
+    } else{
+        const visibleBoard = Array(3).fill(null).map(() => Array(3).fill(null));
+        
+        const gameEnded = getWinner(lobby.board) || isBoardFull(lobby.board);
+
+        if (gameEnded) {
+            // Show last 3 moves of each player when the game ends
+            const lastThreeXMoves = lobby.xMoves.slice(-3);
+            const lastThreeOMoves = lobby.oMoves.slice(-3);
+
+            lastThreeXMoves.forEach(([row, col]) => {
+                visibleBoard[row][col] = 'X';
+            });
+            lastThreeOMoves.forEach(([row, col]) => {
+                visibleBoard[row][col] = 'O';
+            });
+        } else {
+            // Show only the last move of each player during the game
+            if (lobby.xMoves.length > 0) {
+                const [xRow, xCol] = lobby.xMoves[lobby.xMoves.length - 1];
+                visibleBoard[xRow][xCol] = 'X';
+            }
+            if (lobby.oMoves.length > 0) {
+                const [oRow, oCol] = lobby.oMoves[lobby.oMoves.length - 1];
+                visibleBoard[oRow][oCol] = 'O';
+            }
+        }
+        
+        // Fill in the rest of the board with null for empty cells and 'hidden' for occupied but invisible cells
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                if (visibleBoard[i][j] === undefined) {
+                    visibleBoard[i][j] = lobby.board[i][j] ? 'hidden' : null;
+                }
+            }
+        }
+        
+        return visibleBoard;
+    }
+}
+
 function broadcastGameState(lobby) {
     const gameState = {
         type: 'UPDATE_BOARD',
-        board: lobby.board,
-        currentPlayer: lobby.currentPlayer
+        board: getVisibleBoard(lobby),
+        currentPlayer: lobby.currentPlayer,
+        xMoves: lobby.xMoves,
+        oMoves: lobby.oMoves
     };
     broadcastToLobby(lobby, gameState);
 }

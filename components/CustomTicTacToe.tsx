@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Circle, Sun, Moon } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Type definitions
 type Player = 'X' | 'O';
 type BoardState = (Player | null)[][];
 type DifficultyLevel = 1 | 2 | 3;
@@ -29,8 +29,9 @@ if (typeof window !== 'undefined' && window.AudioContext) {
     resetSound.volume = 0.2;
 }
 
-const CustomTicTacToe = () => {
+const OnlineTicTacToe = () => {
     const [board, setBoard] = useState<BoardState>(Array(3).fill(null).map(() => Array(3).fill(null)));
+    const [player, setPlayer] = useState<Player | null>(null);
     const [currentPlayer, setCurrentPlayer] = useState<Player>('X');
     const [winner, setWinner] = useState<Player | null>(null);
     const [isDraw, setIsDraw] = useState(false);
@@ -38,6 +39,10 @@ const CustomTicTacToe = () => {
     const [oMoves, setOMoves] = useState<[number, number][]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel>(2);
+    const [lobbyId, setLobbyId] = useState('');
+    const [ws, setWs] = useState<WebSocket | null>(null);
+    const [gameStatus, setGameStatus] = useState('waiting');
+    const [message, setMessage] = useState('');
 
     const resumeAudioContext = () => {
         if (audioContext && audioContext.state === 'suspended') {
@@ -45,7 +50,6 @@ const CustomTicTacToe = () => {
         }
     };
 
-    // Play sound functions
     const playClickSound = () => {
         resumeAudioContext();
         clickSound?.play().catch((error) => {
@@ -74,11 +78,11 @@ const CustomTicTacToe = () => {
         });
     };
 
-    const checkWinner = (player: Player): boolean => {
+    const checkWinner = (board: BoardState, player: Player): boolean => {
         for (let i = 0; i < 3; i++) {
             if (
                 board[i][0] === player && board[i][1] === player && board[i][2] === player ||
-                board[0][i] === player && board[1][i] === player && board[2][i] === player
+                board[ 0][i] === player && board[1][i] === player && board[2][i] === player
             ) {
                 return true;
             }
@@ -119,7 +123,7 @@ const CustomTicTacToe = () => {
 
         setBoard(newBoard);
 
-        if (checkWinner(currentPlayer)) {
+        if (checkWinner(newBoard, currentPlayer)) {
             setWinner(currentPlayer);
         } else if (newBoard.every(row => row.every(cell => cell !== null))) {
             setIsDraw(true);
@@ -170,13 +174,110 @@ const CustomTicTacToe = () => {
         }
     }, [winner, isDraw]);
 
-    const visibleBoard = getVisibleBoard();
+    const connectWebSocket = useCallback(() => {
+        const socket = new WebSocket('ws://localhost:8080');
+        setWs(socket);
 
-    return (
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+                case 'LOBBY_CREATED':
+                    setLobbyId(data.lobbyId);
+                    setMessage(`Lobby created! Share this code with your friend: ${data.lobbyId}`);
+                    break;
+                case 'GAME_START':
+                    setPlayer(data.player);
+                    setGameStatus('playing');
+                    setMessage(`Game started! You are player ${data.player}`);
+                    break;
+                case 'UPDATE_BOARD':
+                    setBoard(data.board);
+                    break;
+                case 'ERROR':
+                    setMessage(data.message);
+                    break;
+                case 'OPPONENT_LEFT':
+                    setGameStatus('waiting');
+                    setMessage('Your opponent left the game. Waiting for a new player...');
+                    break;
+            }
+        };
+
+        socket.onclose = () => {
+            setMessage('Connection to server lost. Please refresh the page.');
+        };
+    }, []);
+
+    useEffect(() => {
+        connectWebSocket();
+        return () => {
+            if (ws) ws.close();
+        };
+    }, [connectWebSocket]);
+
+    const createLobby = () => {
+        ws?.send(JSON.stringify({ type: 'CREATE_LOBBY' }));
+    };
+
+    const joinLobby = () => {
+        ws?.send(JSON.stringify({ type: 'JOIN_LOBBY', lobbyId }));
+    };
+
+ return (
         <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
             <div className="w-full max-w-md">
+                <h1 className="text-2xl sm:text-4xl font-bold mb-6">Online Tic-Tac-Toe</h1>
+                
+                {message && (
+                    <Alert className="mb-4">
+                        <AlertDescription>{message}</AlertDescription>
+                    </Alert>
+                )}
+
+                {gameStatus === 'waiting' && (
+                    <div className="mb-4">
+                        <Button onClick={createLobby} className="w-full mb-2">Create Lobby</Button>
+                        <div className="flex">
+                            <Input 
+                                value={lobbyId} 
+                                onChange={(e) => setLobbyId(e.target.value)} 
+                                placeholder="Enter Lobby Code"
+                                className="flex-grow mr-2"
+                            />
+                            <Button onClick={joinLobby}>Join Lobby</Button>
+                        </div>
+                    </div>
+                )}
+
+                {gameStatus === 'playing' && (
+                    <div className={`${isDarkMode ? 'bg-white' : 'bg-gray-700'} p-4 sm:p-8 rounded-lg shadow-lg`}>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
+                            {getVisibleBoard().map((row, rowIndex) =>
+                                row.map((cell, colIndex) => (
+                                    <button
+                                        key={`${rowIndex}-${colIndex}`}
+                                        className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
+                                        onClick={() => makeMove(rowIndex, colIndex)}
+                                        disabled={cell !== null || player !== (getVisibleBoard().flat().filter(Boolean).length % 2 === 0 ? 'X' : 'O')}
+                                    >
+                                        {cell === 'X' && <X size={50} className="text-blue-500" />}
+                                        {cell === 'O' && <Circle size={50} className="text-red-500" />}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                        <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
+                            You are: {player === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
+                        </p>
+                    </div>
+                )}
+
+                <p className="mt-4 text-center">
+                    {gameStatus === 'waiting' ? 'Waiting for opponent...' : `Game in progress. Lobby Code: ${lobbyId}`}
+                </p>
+
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl sm:text-4xl font-bold">Custom Tic-Tac-Toe</h1>
+                    <h1 className="text-2xl sm:text-4xl font-bold">Difficulty Level</h1>
                     <label className="flex items-center cursor-pointer">
                         <input
                             type="checkbox"
@@ -191,65 +292,24 @@ const CustomTicTacToe = () => {
                         </div>
                     </label>
                 </div>
-                <div className={`${isDarkMode ? 'bg-white' : 'bg-gray-700'} p-4 sm:p-8 rounded-lg shadow-lg`}>
-                    <div className="mb-4">
-                        <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
-                            <SelectTrigger className={`w-full ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
-                                <SelectValue placeholder="Select difficulty" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="1">Easy</SelectItem>
-                                <SelectItem value="2">Medium</SelectItem>
-                                <SelectItem value="3">Hard</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
-                        {visibleBoard.map((row, rowIndex) =>
-                            row.map((cell, colIndex) => (
-                                <button
-                                    key={`${rowIndex}-${colIndex}`}
-                                    className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
-                                    onClick={() => makeMove(rowIndex, colIndex)}
-                                    disabled={Boolean(cell) || Boolean(winner) || isDraw}
-                                >
-                                    {cell === 'X' && <X size={50} className="text-blue-500" />}
-                                    {cell === 'O' && <Circle size={50} className="text-red-500" />}
-                                </button>
-                            ))
-                        )}
-                    </div>
-                    {(winner || isDraw) && (
-                        <Alert className="mb-4">
-                            <AlertTitle>{winner ? 'Game Over' : 'Draw'}</AlertTitle>
-                            <AlertDescription>
-                                {winner ? `Player ${winner} wins!` : "It's a draw!"}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <div className="flex flex-col sm:flex-row justify-between items-center">
-                        <p className={`text-lg font-semibold mb-2 sm:mb-0 ${isDarkMode ? 'text-gray-800' : 'text-gray-200'}`}>
-                            Current Player: {currentPlayer === 'X' ? <X size={24} className="inline text-blue-500" /> : <Circle size={24} className="inline text-red-500" />}
-                        </p>
-                        <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto">
-                            Reset Game
-                        </Button>
-                    </div>
-                </div>
-                <p className="mt-4 text-center text-sm">
-                    {difficultyLevel === 1
-                        ? "Classic Tic-Tac-Toe: All moves visible"
-                        : difficultyLevel === 2
-                        ? "Medium: Only the last three moves of each player are considered."
-                        : "Hard: Only the last three moves of each player are considered and only the last move of each player is visible."}
-                </p>
-                <footer className="mt-8 text-center text-xs">
-                    <p>Contact: <a href="mailto:cs1230543@iitd.ac.in" className="underline">cs1230543@iitd.ac.in</a></p>
-                    <p>Version 2.0</p>
-                </footer>
+
+                <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
+                    <SelectTrigger className={`w-full ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
+                        <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="1">Easy</SelectItem>
+                        <SelectItem value="2">Medium</SelectItem>
+                        <SelectItem value="3">Hard</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto">
+                    Reset Game
+                </Button>
             </div>
         </div>
     );
 };
 
-export default CustomTicTacToe;
+export default OnlineTicTacToe;

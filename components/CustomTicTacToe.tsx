@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { X, Circle, Sun, Moon } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Type definitions for the player and board state
+// Type definitions
 type Player = 'X' | 'O';
 type BoardState = (Player | null)[][];
+type DifficultyLevel = 1 | 2 | 3;
 
 let audioContext: AudioContext | null = null;
 let clickSound: HTMLAudioElement | null = null;
@@ -28,7 +30,6 @@ if (typeof window !== 'undefined' && window.AudioContext) {
 }
 
 const CustomTicTacToe = () => {
-    // State management
     const [board, setBoard] = useState<BoardState>(Array(3).fill(null).map(() => Array(3).fill(null)));
     const [currentPlayer, setCurrentPlayer] = useState<Player>('X');
     const [winner, setWinner] = useState<Player | null>(null);
@@ -36,6 +37,7 @@ const CustomTicTacToe = () => {
     const [xMoves, setXMoves] = useState<[number, number][]>([]);
     const [oMoves, setOMoves] = useState<[number, number][]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel>(2);
 
     const resumeAudioContext = () => {
         if (audioContext && audioContext.state === 'suspended') {
@@ -64,6 +66,7 @@ const CustomTicTacToe = () => {
             console.error("Lose sound playback failed:", error);
         });
     };
+
     const playResetSound = () => {
         resumeAudioContext();
         resetSound?.play().catch((error) => {
@@ -96,20 +99,22 @@ const CustomTicTacToe = () => {
         const newBoard = [...board];
         newBoard[row][col] = currentPlayer;
 
-        if (currentPlayer === 'X') {
-            const newXMoves = [...xMoves, [row, col] as [number, number]];
-            if (newXMoves.length > 3) {
-                const [oldRow, oldCol] = newXMoves.shift()!;
-                newBoard[oldRow][oldCol] = null;
+        if (difficultyLevel !== 1) {
+            if (currentPlayer === 'X') {
+                const newXMoves = [...xMoves, [row, col] as [number, number]];
+                if (newXMoves.length > 3) {
+                    const [oldRow, oldCol] = newXMoves.shift()!;
+                    newBoard[oldRow][oldCol] = null;
+                }
+                setXMoves(newXMoves);
+            } else {
+                const newOMoves = [...oMoves, [row, col] as [number, number]];
+                if (newOMoves.length > 3) {
+                    const [oldRow, oldCol] = newOMoves.shift()!;
+                    newBoard[oldRow][oldCol] = null;
+                }
+                setOMoves(newOMoves);
             }
-            setXMoves(newXMoves);
-        } else {
-            const newOMoves = [...oMoves, [row, col] as [number, number]];
-            if (newOMoves.length > 3) {
-                const [oldRow, oldCol] = newOMoves.shift()!;
-                newBoard[oldRow][oldCol] = null;
-            }
-            setOMoves(newOMoves);
         }
 
         setBoard(newBoard);
@@ -133,6 +138,30 @@ const CustomTicTacToe = () => {
         setOMoves([]);
     };
 
+    const handleDifficultyChange = (newDifficulty: string) => {
+        setDifficultyLevel(parseInt(newDifficulty) as DifficultyLevel);
+        resetGame();
+    };
+
+    const getVisibleBoard = (): BoardState => {
+        if (difficultyLevel === 1 || winner) {
+            return board;
+        } else if (difficultyLevel === 2) {
+            return board.map(row => [...row]);
+        } else {
+            const visibleBoard: BoardState = Array(3).fill(null).map(() => Array(3).fill(null));
+            if (xMoves.length > 0) {
+                const [xRow, xCol] = xMoves[xMoves.length - 1];
+                visibleBoard[xRow][xCol] = 'X';
+            }
+            if (oMoves.length > 0) {
+                const [oRow, oCol] = oMoves[oMoves.length - 1];
+                visibleBoard[oRow][oCol] = 'O';
+            }
+            return visibleBoard;
+        }
+    };
+
     useEffect(() => {
         if (winner) {
             playWinSound();
@@ -140,6 +169,8 @@ const CustomTicTacToe = () => {
             playLoseSound();
         }
     }, [winner, isDraw]);
+
+    const visibleBoard = getVisibleBoard();
 
     return (
         <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
@@ -161,8 +192,20 @@ const CustomTicTacToe = () => {
                     </label>
                 </div>
                 <div className={`${isDarkMode ? 'bg-white' : 'bg-gray-700'} p-4 sm:p-8 rounded-lg shadow-lg`}>
+                    <div className="mb-4">
+                        <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
+                            <SelectTrigger className={`w-full ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
+                                <SelectValue placeholder="Select difficulty" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="1">Easy</SelectItem>
+                                <SelectItem value="2">Medium</SelectItem>
+                                <SelectItem value="3">Hard</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
-                        {board.map((row, rowIndex) =>
+                        {visibleBoard.map((row, rowIndex) =>
                             row.map((cell, colIndex) => (
                                 <button
                                     key={`${rowIndex}-${colIndex}`}
@@ -194,11 +237,15 @@ const CustomTicTacToe = () => {
                     </div>
                 </div>
                 <p className="mt-4 text-center text-sm">
-                    {`Only the last three moves of each player are visible. Focus on strategy!`}
+                    {difficultyLevel === 1
+                        ? "Classic Tic-Tac-Toe: All moves visible"
+                        : difficultyLevel === 2
+                        ? "Medium: Only the last three moves of each player are considered."
+                        : "Hard: Only the last three moves of each player are considered and only the last move of each player is visible."}
                 </p>
                 <footer className="mt-8 text-center text-xs">
                     <p>Contact: <a href="mailto:cs1230543@iitd.ac.in" className="underline">cs1230543@iitd.ac.in</a></p>
-                    <p>Version 1.0</p>
+                    <p>Version 2.0</p>
                 </footer>
             </div>
         </div>

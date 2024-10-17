@@ -12,3 +12,8 @@ Tic-Tac-Toe game with past moves getting vanished.
 Players take turns inputting their moves using the format row col (e.g., 0 1).
 The board updates after each move, showing only the most recent three moves for each player.
 The game ends when there’s a win or a draw.
+- Run this command
+```
+ssh -p 443 -R0:localhost:3000 -L4300:localhost:4300 qr@a.pinggy.io
+```
+- Get the QR code and view it in any device.

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Circle, Sun, Moon } from 'lucide-react';
+import { X, Circle, Sun, Moon, Home } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ const OnlineTicTacToe = () => {
     const [ws, setWs] = useState<WebSocket | null>(null);
     const [gameStatus, setGameStatus] = useState('waiting');
     const [message, setMessage] = useState('');
+    const [isHost, setIsHost] = useState(false);
 
     const resumeAudioContext = () => {
         if (audioContext && audioContext.state === 'suspended') {
@@ -97,92 +98,39 @@ const OnlineTicTacToe = () => {
     };
 
     const makeMove = (row: number, col: number) => {
-        if (board[row][col] !== null || winner || isDraw) return;
-
-        playClickSound();
-        const newBoard = [...board];
-        newBoard[row][col] = currentPlayer;
-
-        if (difficultyLevel !== 1) {
-            if (currentPlayer === 'X') {
-                const newXMoves = [...xMoves, [row, col] as [number, number]];
-                if (newXMoves.length > 3) {
-                    const [oldRow, oldCol] = newXMoves.shift()!;
-                    newBoard[oldRow][oldCol] = null;
-                }
-                setXMoves(newXMoves);
-            } else {
-                const newOMoves = [...oMoves, [row, col] as [number, number]];
-                if (newOMoves.length > 3) {
-                    const [oldRow, oldCol] = newOMoves.shift()!;
-                    newBoard[oldRow][oldCol] = null;
-                }
-                setOMoves(newOMoves);
-            }
-        }
-
-        setBoard(newBoard);
-
-        if (checkWinner(newBoard, currentPlayer)) {
-            setWinner(currentPlayer);
-        } else if (newBoard.every(row => row.every(cell => cell !== null))) {
-            setIsDraw(true);
-        } else {
-            setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
-        }
+        if (board[row][col] !== null || winner || isDraw || currentPlayer !== player) return;
+        ws?.send(JSON.stringify({ type: 'MAKE_MOVE', lobbyId, row, col, player }));
     };
 
     const resetGame = () => {
-        playResetSound();
-        setBoard(Array(3).fill(null).map(() => Array(3).fill(null)));
-        setCurrentPlayer('X');
-        setWinner(null);
-        setIsDraw(false);
-        setXMoves([]);
-        setOMoves([]);
+        if (!isHost) return;
+        ws?.send(JSON.stringify({ type: 'RESET_GAME', lobbyId }));
     };
 
     const handleDifficultyChange = (newDifficulty: string) => {
-        setDifficultyLevel(parseInt(newDifficulty) as DifficultyLevel);
-        resetGame();
+        if (!isHost) return;
+        const difficulty = parseInt(newDifficulty) as DifficultyLevel;
+        setDifficultyLevel(difficulty);
+        ws?.send(JSON.stringify({ type: 'SET_DIFFICULTY', lobbyId, difficulty }));
     };
 
-    const getVisibleBoard = (): BoardState => {
-        if (difficultyLevel === 1 || winner) {
-            return board;
-        } else if (difficultyLevel === 2) {
-            return board.map(row => [...row]);
-        } else {
-            const visibleBoard: BoardState = Array(3).fill(null).map(() => Array(3).fill(null));
-            if (xMoves.length > 0) {
-                const [xRow, xCol] = xMoves[xMoves.length - 1];
-                visibleBoard[xRow][xCol] = 'X';
-            }
-            if (oMoves.length > 0) {
-                const [oRow, oCol] = oMoves[oMoves.length - 1];
-                visibleBoard[oRow][oCol] = 'O';
-            }
-            return visibleBoard;
-        }
+    const handlePlayerChoice = (chosenPlayer: Player) => {
+        if (!isHost) return;
+        ws?.send(JSON.stringify({ type: 'CHOOSE_PLAYER', lobbyId, player: chosenPlayer }));
     };
-
-    useEffect(() => {
-        if (winner) {
-            playWinSound();
-        } else if (isDraw) {
-            playLoseSound();
-        }
-    }, [winner, isDraw]);
 
     const connectWebSocket = useCallback(() => {
-        const socket = new WebSocket('ws://localhost:8080');
+        const serverIP = 'localhost'; // Change this to your server's IP if needed
+        const socket = new WebSocket(`ws://${serverIP}:8080`);
         setWs(socket);
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            console.log('Received message:', data); // Add this line for debugging
             switch (data.type) {
                 case 'LOBBY_CREATED':
                     setLobbyId(data.lobbyId);
+                    setIsHost(true);
                     setMessage(`Lobby created! Share this code with your friend: ${data.lobbyId}`);
                     break;
                 case 'GAME_START':
@@ -192,6 +140,20 @@ const OnlineTicTacToe = () => {
                     break;
                 case 'UPDATE_BOARD':
                     setBoard(data.board);
+                    setCurrentPlayer(data.currentPlayer);
+                    break;
+                case 'GAME_OVER':
+                    setWinner(data.winner);
+                    setIsDraw(data.isDraw);
+                    break;
+                case 'RESET_GAME':
+                    setBoard(Array(3).fill(null).map(() => Array(3).fill(null)));
+                    setCurrentPlayer('X');
+                    setWinner(null);
+                    setIsDraw(false);
+                    break;
+                case 'SET_DIFFICULTY':
+                    setDifficultyLevel(data.difficulty);
                     break;
                 case 'ERROR':
                     setMessage(data.message);
@@ -223,10 +185,32 @@ const OnlineTicTacToe = () => {
         ws?.send(JSON.stringify({ type: 'JOIN_LOBBY', lobbyId }));
     };
 
- return (
+    const goToHomePage = () => {
+        // Reset all state and close the WebSocket connection
+        setBoard(Array(3).fill(null).map(() => Array(3).fill(null)));
+        setPlayer(null);
+        setCurrentPlayer('X');
+        setWinner(null);
+        setIsDraw(false);
+        setXMoves([]);
+        setOMoves([]);
+        setLobbyId('');
+        setGameStatus('waiting');
+        setMessage('');
+        setIsHost(false);
+        if (ws) ws.close();
+        connectWebSocket();
+    };
+
+    return (
         <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
             <div className="w-full max-w-md">
-                <h1 className="text-2xl sm:text-4xl font-bold mb-6">Online Tic-Tac-Toe</h1>
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl sm:text-4xl font-bold">Online Tic-Tac-Toe</h1>
+                    <Button onClick={goToHomePage} className="bg-gray-500 hover:bg-gray-600">
+                        <Home size={24} />
+                    </Button>
+                </div>
                 
                 {message && (
                     <Alert className="mb-4">
@@ -252,13 +236,13 @@ const OnlineTicTacToe = () => {
                 {gameStatus === 'playing' && (
                     <div className={`${isDarkMode ? 'bg-white' : 'bg-gray-700'} p-4 sm:p-8 rounded-lg shadow-lg`}>
                         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
-                            {getVisibleBoard().map((row, rowIndex) =>
+                            {board.map((row, rowIndex) =>
                                 row.map((cell, colIndex) => (
                                     <button
                                         key={`${rowIndex}-${colIndex}`}
                                         className={`w-full aspect-square ${isDarkMode ? 'bg-gray-600 text-white hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-lg flex items-center justify-center text-2xl sm:text-4xl focus:outline-none transition-colors`}
                                         onClick={() => makeMove(rowIndex, colIndex)}
-                                        disabled={cell !== null || player !== (getVisibleBoard().flat().filter(Boolean).length % 2 === 0 ? 'X' : 'O')}
+                                        disabled={cell !== null || currentPlayer !== player}
                                     >
                                         {cell === 'X' && <X size={50} className="text-blue-500" />}
                                         {cell === 'O' && <Circle size={50} className="text-red-500" />}
@@ -276,8 +260,37 @@ const OnlineTicTacToe = () => {
                     {gameStatus === 'waiting' ? 'Waiting for opponent...' : `Game in progress. Lobby Code: ${lobbyId}`}
                 </p>
 
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl sm:text-4xl font-bold">Difficulty Level</h1>
+                {isHost && (
+                    <>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">Difficulty Level</h2>
+                            <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
+                                <SelectTrigger className={`w-40 ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
+                                    <SelectValue placeholder="Select difficulty" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Easy</SelectItem>
+                                    <SelectItem value="2">Medium</SelectItem>
+                                    <SelectItem value="3">Hard</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">Choose Player</h2>
+                            <div>
+                                <Button onClick={() => handlePlayerChoice('X')} className="mr-2">Play as X</Button>
+                                <Button onClick={() => handlePlayerChoice('O')}>Play as O</Button>
+                            </div>
+                        </div>
+
+                        <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto mb-4">
+                            Reset Game
+                        </Button>
+                    </>
+                )}
+
+                <div className="flex justify-end">
                     <label className="flex items-center cursor-pointer">
                         <input
                             type="checkbox"
@@ -292,21 +305,6 @@ const OnlineTicTacToe = () => {
                         </div>
                     </label>
                 </div>
-
-                <Select onValueChange={handleDifficultyChange} value={difficultyLevel.toString()}>
-                    <SelectTrigger className={`w-full ${isDarkMode ? 'bg-gray-600':'bg-white'}`}>
-                        <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="1">Easy</SelectItem>
-                        <SelectItem value="2">Medium</SelectItem>
-                        <SelectItem value="3">Hard</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Button onClick={resetGame} className="bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto">
-                    Reset Game
-                </Button>
             </div>
         </div>
     );

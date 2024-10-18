@@ -102,8 +102,8 @@ const OnlineTicTacToe = () => {
     };
 
     const connectWebSocket = useCallback(() => {
-        const serverIP = '192.168.103.22'; // Change this to your server's IP if needed
-        const socket = new WebSocket(`ws://${serverIP}:8080`);
+        const serverIP = 'localhost'; // Change this to your server's IP if needed
+        const socket = new WebSocket(`wss://${serverIP}:8080`);
         setWs(socket);
 
         socket.onmessage = (event) => {

@@ -1,11 +1,11 @@
 const WebSocket = require('ws');
-const http = require('http');
+const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const { Console } = require('console');
 
 const port = process.env.PORT || 8080;
 
-const server = http.createServer((req, res) => {
+const server = https.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('WebSocket server is running');
 });
@@ -218,5 +218,5 @@ function isBoardFull(board) {
 }
 
 server.listen(port, '0.0.0.0', () => {
-    console.log(`Server is running on http://0.0.0.0:${port}`);
+    console.log(`Server is running on https://0.0.0.0:${port}`);
 });

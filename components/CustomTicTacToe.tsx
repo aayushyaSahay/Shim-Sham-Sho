@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Circle, Sun, Moon, Home } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,24 +78,6 @@ const OnlineTicTacToe = () => {
         });
     };
 
-    const checkWinner = (board: BoardState, player: Player): boolean => {
-        for (let i = 0; i < 3; i++) {
-            if (
-                board[i][0] === player && board[i][1] === player && board[i][2] === player ||
-                board[0][i] === player && board[1][i] === player && board[2][i] === player
-            ) {
-                return true;
-            }
-        }
-        if (
-            board[0][0] === player && board[1][1] === player && board[2][2] === player ||
-            board[0][2] === player && board[1][1] === player && board[2][0] === player
-        ) {
-            return true;
-        }
-        return false;
-    };
-
     const makeMove = (row: number, col: number) => {
         if (board[row][col] !== null || winner || isDraw || currentPlayer !== player) return;
         playClickSound();
@@ -156,6 +138,8 @@ const OnlineTicTacToe = () => {
                     } else if (data.isDraw) {
                         setMessage("The game has ended, reset the board to play again!");
                     }
+                    console.log(xMoves);
+                    console.log(oMoves);
                     break;
                 case 'RESET_GAME':
                     setBoard(Array(3).fill(null).map(() => Array(3).fill(null)));

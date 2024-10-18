@@ -114,7 +114,6 @@ const OnlineTicTacToe = () => {
         setDifficultyLevel(difficulty);
         ws?.send(JSON.stringify({ type: 'SET_DIFFICULTY', lobbyId, difficulty }));
     };
-
     const handlePlayerChoice = (chosenPlayer: Player) => {
         if (!isHost) return;
         ws?.send(JSON.stringify({ type: 'CHOOSE_PLAYER', lobbyId, player: chosenPlayer }));
@@ -150,12 +149,12 @@ const OnlineTicTacToe = () => {
                     setIsDraw(data.isDraw);
                     if (data.winner === player) {
                         playWinSound();
-                        setMessage("Congratulations! You won!");
+                        setMessage("The game has ended, reset the board to play again!");
                     } else if (data.winner) {
                         playLoseSound();
-                        setMessage("You lost. Better luck next time!");
+                        setMessage("The game has ended, reset the board to play again!");
                     } else if (data.isDraw) {
-                        setMessage("It's a draw!");
+                        setMessage("The game has ended, reset the board to play again!");
                     }
                     break;
                 case 'RESET_GAME':
@@ -216,34 +215,6 @@ const OnlineTicTacToe = () => {
         if (ws) ws.close();
         connectWebSocket();
     };
-
-    // const getVisibleBoard = (): BoardState => {
-    //     if (difficultyLevel === 1 || difficultyLevel === 2) {
-    //         return board;
-    //     } else {
-    //         const visibleBoard: BoardState = Array(3).fill(null).map(() => Array(3).fill(null));
-
-    //         if (winner || isDraw) {
-    //             // Show last 3 moves when the game ends
-    //             const lastThreeMoves = [...xMoves, ...oMoves].slice(-3);
-    //             lastThreeMoves.forEach(([row, col], index) => {
-    //                 visibleBoard[row][col] = index % 2 === 0 ? 'X' : 'O';
-    //             });
-    //         } else {
-    //             // Show only the last move of each player during the game
-    //             if (xMoves.length > 0) {
-    //                 const [xRow, xCol] = xMoves[xMoves.length - 1];
-    //                 visibleBoard[xRow][xCol] = 'X';
-    //             }
-    //             if (oMoves.length > 0) {
-    //                 const [oRow, oCol] = oMoves[oMoves.length - 1];
-    //                 visibleBoard[oRow][oCol] = 'O';
-    //             }
-    //         }
-
-    //         return visibleBoard;
-    //     }
-    // };
 
     return (
         <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'} flex flex-col items-center justify-center min-h-screen p-4`}>
@@ -325,9 +296,9 @@ const OnlineTicTacToe = () => {
                                     <SelectValue placeholder="Select difficulty" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="1">Easy</SelectItem>
-                                    <SelectItem value="2">Medium</SelectItem>
-                                    <SelectItem value="3">Hard</SelectItem>
+                                    <SelectItem value="1">Easy (Normal)</SelectItem>
+                                    <SelectItem value="2">Medium (Last 3 moves)</SelectItem>
+                                    <SelectItem value="3">Hard (Last move only)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

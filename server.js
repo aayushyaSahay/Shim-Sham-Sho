@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
+const { Console } = require('console');
 
 const port = process.env.PORT || 8080;
 
@@ -116,82 +117,50 @@ function makeMove(lobby, row, col, player) {
     } else {
         lobby.oMoves.push([row, col]);
     }
-    // if (lobby.difficulty === 3) {
-    //     const moves = player === 'X' ? lobby.xMoves : lobby.oMoves;
-    //     if (moves.length > 3) {
-    //         const [oldRow, oldCol] = moves.shift();
-    //         lobby.board[oldRow][oldCol] = null;
-    //     }
-    // }
+    if (lobby.difficulty > 1 && lobby.xMoves.length > 3) {
+    }
+    if (lobby.difficulty > 1){
+        if(lobby.xMoves.length > 3){
+            lobby.xMoves.shift();
+        }else if (lobby.oMoves.length > 3){
+            lobby.oMoves.shift();
+        }
+    }
     lobby.currentPlayer = lobby.currentPlayer === 'X' ? 'O' : 'X';
 }
 
 
 function getVisibleBoard(lobby) {
-    if (lobby.difficulty === 1) {
-        return lobby.board.map(row => [...row]);
-    } else if(lobby.difficulty === 2){
+    lobby.board = Array(3).fill(null).map(() => Array(3).fill(null));
+    lobby.xMoves.forEach(([row, col]) => {
+        lobby.board[row][col] = 'X';
+    });
+    lobby.oMoves.forEach(([row, col]) => {
+        lobby.board[row][col] = 'O';
+    });
+    const gameEnded = getWinner(lobby.board) || isBoardFull(lobby.board);
+    if (gameEnded || lobby.difficulty === 1 || lobby.difficulty === 2) {
+        if(gameEnded){
+            console.log("game has ended somehow")
+        }
+        return lobby.board;
+    } else {
         const visibleBoard = Array(3).fill(null).map(() => Array(3).fill(null));
-        
-        // Show last three moves of each player
-        const lastThreeXMoves = lobby.xMoves.slice(-3);
-        const lastThreeOMoves = lobby.oMoves.slice(-3);
-
-        lastThreeXMoves.forEach(([row, col]) => {
-            visibleBoard[row][col] = 'X';
+        // Show only the last move of each player during the game
+        lobby.xMoves.forEach(([row, col]) => {
+            visibleBoard[row][col] = '-';
         });
-
-        lastThreeOMoves.forEach(([row, col]) => {
-            visibleBoard[row][col] = 'O';
+        lobby.oMoves.forEach(([row, col]) => {
+            visibleBoard[row][col] = '-';
         });
-
-        // Ensure that only the visible moves are shown, and the rest are null
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (visibleBoard[i][j] === undefined) {
-                    visibleBoard[i][j] = null;
-                }
-            }
+        if (lobby.xMoves.length > 0) {
+            const [xRow, xCol] = lobby.xMoves[lobby.xMoves.length - 1];
+            visibleBoard[xRow][xCol] = 'X';
         }
-        
-        return visibleBoard;
-    } else{
-        const visibleBoard = Array(3).fill(null).map(() => Array(3).fill(null));
-        
-        const gameEnded = getWinner(lobby.board) || isBoardFull(lobby.board);
-
-        if (gameEnded) {
-            // Show last 3 moves of each player when the game ends
-            const lastThreeXMoves = lobby.xMoves.slice(-3);
-            const lastThreeOMoves = lobby.oMoves.slice(-3);
-
-            lastThreeXMoves.forEach(([row, col]) => {
-                visibleBoard[row][col] = 'X';
-            });
-            lastThreeOMoves.forEach(([row, col]) => {
-                visibleBoard[row][col] = 'O';
-            });
-        } else {
-            // Show only the last move of each player during the game
-            if (lobby.xMoves.length > 0) {
-                const [xRow, xCol] = lobby.xMoves[lobby.xMoves.length - 1];
-                visibleBoard[xRow][xCol] = 'X';
-            }
-            if (lobby.oMoves.length > 0) {
-                const [oRow, oCol] = lobby.oMoves[lobby.oMoves.length - 1];
-                visibleBoard[oRow][oCol] = 'O';
-            }
+        if (lobby.oMoves.length > 0) {
+            const [oRow, oCol] = lobby.oMoves[lobby.oMoves.length - 1];
+            visibleBoard[oRow][oCol] = 'O';
         }
-        
-        // Fill in the rest of the board with null for empty cells and 'hidden' for occupied but invisible cells
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (visibleBoard[i][j] === undefined) {
-                    visibleBoard[i][j] = lobby.board[i][j] ? 'hidden' : null;
-                }
-            }
-        }
-        
         return visibleBoard;
     }
 }

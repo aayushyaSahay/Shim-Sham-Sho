@@ -102,7 +102,7 @@ const OnlineTicTacToe = () => {
     };
 
     const connectWebSocket = useCallback(() => {
-        const serverIP = 'shim-sham-sho.netlify.app'; // Change this to your server's IP if needed
+        const serverIP = 'https://tictactoebackend-4dk1.onrender.com'; // Change this to your server's IP if needed
         const socket = new WebSocket(`wss://${serverIP}:8080`);
         setWs(socket);
 

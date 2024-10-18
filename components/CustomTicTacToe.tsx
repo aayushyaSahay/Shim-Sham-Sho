@@ -103,7 +103,7 @@ const OnlineTicTacToe = () => {
 
     const connectWebSocket = useCallback(() => {
         const serverIP = 'https://tictactoebackend-4dk1.onrender.com'; // Change this to your server's IP if needed
-        const socket = new WebSocket(`wss://${serverIP}:8080`);
+        const socket = new WebSocket(`wss://${serverIP}:10000`);
         setWs(socket);
 
         socket.onmessage = (event) => {
